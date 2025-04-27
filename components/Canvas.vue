@@ -84,7 +84,6 @@ const resizePaddle = (newWidth: number) => {
     position: absolute;
     border-radius: 4px;
     will-change: transform; // Оптимизация анимации
-    transition: left 0.01s linear;
   }
 }
 </style>
