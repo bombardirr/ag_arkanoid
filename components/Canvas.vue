@@ -1,63 +1,64 @@
 <script setup lang="ts">
-import type {Paddle} from "~/types/game";
-
-const paddle = ref<Paddle>({
-  position: {x: 0, y: 0},
-  size: {width: 100, height: 20},
-  speed: 8,
-  maxWidth: 150,
-  color: '#fff'
-})
+import usePaddle from "~/composables/entities/usePaddle"
+import useBall from "~/composables/entities/useBall"
+import useCollision from "~/composables/physics/useCollisions"
 
 const gameContainer = ref<HTMLDivElement | null>(null)
+const containerSize = ref({ width: 0, height: 0 })
 
+// Инициализация игровых объектов
+const { paddle, moveTo, init: initPaddle } = usePaddle(containerSize)
+const { ball, reset: resetBall, move: moveBall } = useBall()
+const { checkWallCollision, checkPaddleCollision, checkBottomCollision } =
+    useCollision(ball, paddle, containerSize)
+
+// Обработчик движения мыши
 const handleMouseMove = (e: MouseEvent) => {
-  if (!gameContainer.value) return;
-
-  const containerRect = gameContainer.value.getBoundingClientRect();
-  let targetX = e.clientX - containerRect.left - paddle.value.size.width / 2;
-
-  // Ограничиваем позицию границами контейнера
-  targetX = Math.max(
-      0,
-      Math.min(targetX, containerRect.width - paddle.value.size.width)
-  );
-
-  // Плавное движение со скоростью (speed)
-  const dx = targetX - paddle.value.position.x;
-  paddle.value.position.x += dx * paddle.value.speed * 0.05; // Коэффициент плавности
+  if (!gameContainer.value) return
+  const mouseX = e.clientX - gameContainer.value.getBoundingClientRect().left
+  moveTo(mouseX - paddle.value.size.width / 2)
 }
 
+// Игровой цикл
+const gameLoop = () => {
+  moveBall()
+  checkWallCollision()
+  checkPaddleCollision()
+
+  if (checkBottomCollision()) {
+    resetBall(containerSize.value)
+  }
+
+  requestAnimationFrame(gameLoop)
+}
+
+// Инициализация
 onMounted(() => {
-  if (!gameContainer.value) return;
-  const {width, height} = gameContainer.value.getBoundingClientRect();
+  if (!gameContainer.value) return
 
-  paddle.value.position = {
-    x: width / 2 - paddle.value.size.width / 2,
-    y: height - 40
-  };
+  const rect = gameContainer.value.getBoundingClientRect()
+  containerSize.value = { width: rect.width, height: rect.height }
 
-  document.addEventListener('mousemove', handleMouseMove);
+  initPaddle()
+  resetBall(containerSize.value)
+
+  // Стартуем мяч с платформы
+  ball.value.position = {
+    x: paddle.value.position.x + paddle.value.size.width / 2,
+    y: paddle.value.position.y - ball.value.radius - 5
+  }
+
+  document.addEventListener('mousemove', handleMouseMove)
+  gameLoop()
 })
 
 onUnmounted(() => {
-  document.removeEventListener('mousemove', handleMouseMove);
+  document.removeEventListener('mousemove', handleMouseMove)
 })
-
-// Для будущих расширений (изменение размера)
-const resizePaddle = (newWidth: number) => {
-  paddle.value.size.width = Math.min(
-      Math.max(newWidth, 50), // minWidth можно вынести в тип
-      paddle.value.maxWidth
-  );
-}
 </script>
 
 <template>
-  <div
-      ref="gameContainer"
-      class="game-container"
-  >
+  <div ref="gameContainer" class="game-container">
     <div
         class="paddle"
         :style="{
@@ -68,22 +69,36 @@ const resizePaddle = (newWidth: number) => {
         backgroundColor: paddle.color
       }"
     />
+    <div
+        class="ball"
+        :style="{
+        left: `${ball.position.x - ball.radius}px`,
+        top: `${ball.position.y - ball.radius}px`,
+        width: `${ball.radius * 2}px`,
+        height: `${ball.radius * 2}px`,
+        backgroundColor: ball.color
+      }"
+    />
   </div>
 </template>
 
-<style lang="scss">
+<style scoped lang="scss">
 .game-container {
   position: relative;
   width: 50vw;
   height: 50vh;
   background-color: #000;
   margin: auto;
-  overflow: hidden; // Чтобы paddle не выходил за границы
+  overflow: hidden;
+
+  .paddle, .ball {
+    position: absolute;
+    border-radius: 50%;
+    will-change: transform;
+  }
 
   .paddle {
-    position: absolute;
     border-radius: 4px;
-    will-change: transform; // Оптимизация анимации
   }
 }
 </style>
