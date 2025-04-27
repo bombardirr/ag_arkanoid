@@ -1,33 +1,59 @@
 <script setup lang="ts">
-import usePaddle from "~/composables/entities/usePaddle";
+import usePaddle from "~/composables/entities/usePaddle"
+import useBall from "~/composables/entities/useBall"
+import useCollision from "~/composables/physics/useCollisions"
 
 const gameContainer = ref<HTMLDivElement | null>(null)
-const containerSize = ref({width: 0, height: 0})
+const containerSize = ref({ width: 0, height: 0 })
 
-// Инициализация платформы
-const {paddle, moveTo, init} = usePaddle(containerSize)
+// Инициализация игровых объектов
+const { paddle, moveTo, init: initPaddle } = usePaddle(containerSize)
+const { ball, reset: resetBall, move: moveBall } = useBall()
+const { checkWallCollision, checkPaddleCollision, checkBottomCollision } =
+    useCollision(ball, paddle, containerSize)
 
 // Обработчик движения мыши
 const handleMouseMove = (e: MouseEvent) => {
-  if (!gameContainer.value) return;
+  if (!gameContainer.value) return
+  const mouseX = e.clientX - gameContainer.value.getBoundingClientRect().left
+  moveTo(mouseX - paddle.value.size.width / 2)
+}
 
-  let targetX = e.clientX - gameContainer.value.getBoundingClientRect().left;
-  moveTo(targetX - paddle.value.size.width / 2)
+// Игровой цикл
+const gameLoop = () => {
+  moveBall()
+  checkWallCollision()
+  checkPaddleCollision()
+
+  if (checkBottomCollision()) {
+    resetBall(containerSize.value)
+  }
+
+  requestAnimationFrame(gameLoop)
 }
 
 // Инициализация
 onMounted(() => {
-  if (!gameContainer.value) return;
+  if (!gameContainer.value) return
 
   const rect = gameContainer.value.getBoundingClientRect()
   containerSize.value = { width: rect.width, height: rect.height }
 
-  init()
+  initPaddle()
+  resetBall(containerSize.value)
+
+  // Стартуем мяч с платформы
+  ball.value.position = {
+    x: paddle.value.position.x + paddle.value.size.width / 2,
+    y: paddle.value.position.y - ball.value.radius - 5
+  }
+
   document.addEventListener('mousemove', handleMouseMove)
+  gameLoop()
 })
 
 onUnmounted(() => {
-  document.removeEventListener('mousemove', handleMouseMove);
+  document.removeEventListener('mousemove', handleMouseMove)
 })
 </script>
 
@@ -43,6 +69,16 @@ onUnmounted(() => {
         backgroundColor: paddle.color
       }"
     />
+    <div
+        class="ball"
+        :style="{
+        left: `${ball.position.x - ball.radius}px`,
+        top: `${ball.position.y - ball.radius}px`,
+        width: `${ball.radius * 2}px`,
+        height: `${ball.radius * 2}px`,
+        backgroundColor: ball.color
+      }"
+    />
   </div>
 </template>
 
@@ -55,10 +91,14 @@ onUnmounted(() => {
   margin: auto;
   overflow: hidden;
 
-  .paddle {
+  .paddle, .ball {
     position: absolute;
-    border-radius: 4px;
+    border-radius: 50%;
     will-change: transform;
+  }
+
+  .paddle {
+    border-radius: 4px;
   }
 }
 </style>

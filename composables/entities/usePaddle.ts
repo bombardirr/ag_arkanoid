@@ -9,14 +9,6 @@ export default function (container: Ref<{ width: number; height: number }>) {
         color: '#fff'
     })
 
-    // Установка позиции с жёстким ограничением границ
-    const setPosition = (x: number) => {
-        paddle.value.position.x = Math.max(
-            0,
-            Math.min(x, container.value.width - paddle.value.size.width)
-        )
-    }
-
     // Плавное движение с гарантией соблюдения границ
     const moveTo = (targetX: number) => {
         // Сначала ограничиваем целевую позицию
