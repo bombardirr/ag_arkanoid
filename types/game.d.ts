@@ -12,38 +12,31 @@ interface Size {
     height: number;
 }
 
-interface Circle {
-    center: Point;
-    radius: number;
-}
-
-interface Rectangle {
+interface GameObject {
     position: Point;
-    size: Size
+    color: string;
+    size: Size;
 }
 
 // ========================
 // Игровые сущности
 // ========================
 
-interface Paddle extends Rectangle {
+interface Paddle extends GameObject {
     speed: number;
-    color: string;
     readonly maxWidth: number; // Константа (можно менять только через модификаторы)
 }
 
-interface Ball extends Circle {
+interface Ball extends Omit<GameObject, 'size'> {
+    radius: number;
     velocity: Point;
-    baseSpeed: number;
-    color: string;
 }
 
 type BrickType = 'basic' | 'hard' | 'indestructible'
 
-interface Brick extends Rectangle {
+interface Brick extends GameObject {
     type: BrickType;
     health: number;
-    color: string;
     points: number;
 }
 
