@@ -1,63 +1,38 @@
 <script setup lang="ts">
-import type {Paddle} from "~/types/game";
-
-const paddle = ref<Paddle>({
-  position: {x: 0, y: 0},
-  size: {width: 100, height: 20},
-  speed: 8,
-  maxWidth: 150,
-  color: '#fff'
-})
+import usePaddle from "~/composables/entities/usePaddle";
 
 const gameContainer = ref<HTMLDivElement | null>(null)
+const containerSize = ref({width: 0, height: 0})
 
+// Инициализация платформы
+const {paddle, moveTo, init} = usePaddle(containerSize)
+
+// Обработчик движения мыши
 const handleMouseMove = (e: MouseEvent) => {
   if (!gameContainer.value) return;
 
-  const containerRect = gameContainer.value.getBoundingClientRect();
-  let targetX = e.clientX - containerRect.left - paddle.value.size.width / 2;
-
-  // Ограничиваем позицию границами контейнера
-  targetX = Math.max(
-      0,
-      Math.min(targetX, containerRect.width - paddle.value.size.width)
-  );
-
-  // Плавное движение со скоростью (speed)
-  const dx = targetX - paddle.value.position.x;
-  paddle.value.position.x += dx * paddle.value.speed * 0.05; // Коэффициент плавности
+  let targetX = e.clientX - gameContainer.value.getBoundingClientRect().left;
+  moveTo(targetX - paddle.value.size.width / 2)
 }
 
+// Инициализация
 onMounted(() => {
   if (!gameContainer.value) return;
-  const {width, height} = gameContainer.value.getBoundingClientRect();
 
-  paddle.value.position = {
-    x: width / 2 - paddle.value.size.width / 2,
-    y: height - 40
-  };
+  const rect = gameContainer.value.getBoundingClientRect()
+  containerSize.value = { width: rect.width, height: rect.height }
 
-  document.addEventListener('mousemove', handleMouseMove);
+  init()
+  document.addEventListener('mousemove', handleMouseMove)
 })
 
 onUnmounted(() => {
   document.removeEventListener('mousemove', handleMouseMove);
 })
-
-// Для будущих расширений (изменение размера)
-const resizePaddle = (newWidth: number) => {
-  paddle.value.size.width = Math.min(
-      Math.max(newWidth, 50), // minWidth можно вынести в тип
-      paddle.value.maxWidth
-  );
-}
 </script>
 
 <template>
-  <div
-      ref="gameContainer"
-      class="game-container"
-  >
+  <div ref="gameContainer" class="game-container">
     <div
         class="paddle"
         :style="{
@@ -71,19 +46,19 @@ const resizePaddle = (newWidth: number) => {
   </div>
 </template>
 
-<style lang="scss">
+<style scoped lang="scss">
 .game-container {
   position: relative;
   width: 50vw;
   height: 50vh;
   background-color: #000;
   margin: auto;
-  overflow: hidden; // Чтобы paddle не выходил за границы
+  overflow: hidden;
 
   .paddle {
     position: absolute;
     border-radius: 4px;
-    will-change: transform; // Оптимизация анимации
+    will-change: transform;
   }
 }
 </style>
